@@ -2,6 +2,8 @@
 
 Data browser for the HDF5 files created by deeprank. The GUI allows to easily explore file structure, view, the target values and visualize the mapped features in either VMD or PyMol. In addition an the data can be loaded in an embedded iPython console for manipulation and analysis. 
 
+![alt-text](./deepxplorer.png)
+
 ## Installation
 
 To use the browser you need to install
@@ -29,4 +31,3 @@ To launch the tool using the example provided simply type in your console
 ./DeepXplorer -hdf5 example.hdf5
 ```
 
-![alt-text](./deepxplorer.png)
