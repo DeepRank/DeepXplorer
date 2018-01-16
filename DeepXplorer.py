@@ -33,8 +33,11 @@ class QIPythonWidget(RichJupyterWidget):
     Convenience class for a live IPython console widget. 
     We can replace the standard banner using the customBanner argument
     https://stackoverflow.com/questions/11513132/embedding-ipython-qt-console-in-a-pyqt-application
+    possible colors lightbg,linux,nocolor
     """
-    def __init__(self,customBanner=None,colors='linux',*args,**kwargs):
+
+
+    def __init__(self,customBanner=None,colors='lightbg',*args,**kwargs):
         if not customBanner is None: self.banner=customBanner
         super(QIPythonWidget, self).__init__(*args,**kwargs)
         self.kernel_manager = kernel_manager = QtInProcessKernelManager()
@@ -61,19 +64,29 @@ class QIPythonWidget(RichJupyterWidget):
         """ Prints some plain text to the console """
         self._append_plain_text(text)  
 
-    def executeCommand(self,command):
+    def executeCommand(self,command,hidden=False,interactive=False):
         """ Execute a command in the frame of the console widget """
-        self._execute(command,False)
+        self.execute(source=command,hidden=hidden,interactive=interactive)
 
     def import_value(self,HDF5Object):
         HDF5Object.emitDict.connect(self.get_value)
 
     @pyqtSlot(dict)
     def get_value(self,variableDict):
-        self.pushVariables(variableDict)
-        for k in variableDict:
-            self.printText(k + '\n')
-            self.executeCommand('print(%s)' %k)
+
+        # exectute a command
+        keys = list(variableDict.keys())
+        if keys[0].startswith('exec_cmd'):
+            for k,cmd in variableDict.items():
+                self._execute(cmd,False)
+
+        # push a variable in the console
+        # print it if the name doesnt start with _
+        else:
+            self.pushVariables(variableDict)
+            for k in variableDict:
+                if not k.startswith('_'):
+                    self.executeCommand('%s' %k)
 
 class DummyHDF5Group(dict):
     def __init__(self,dictionary, attrs ={}, name="DummyHDF5Group"):
@@ -321,20 +334,34 @@ class HDF5ItemModel(QtCore.QAbstractItemModel):
         treeview.customContextMenuRequested.connect(functools.partial(self.context_menu, treeview))
         
     def context_menu(self, treeview, position):
+
         """Generate a right-click menu for the items"""
 
         # make sure tha there is only one item selected
         items = [self._index_to_item(index) for index in treeview.selectedIndexes()]
-        if len(items)>1:
+        if len(items)!=1:
             return
         item = items[0]
 
-        if len(item.name.split('/')) != 3:
+        try:
+            _type = self.root_item.data_file[item.name].attrs['type']
+
+            if _type == 'molecule':
+                self._context_mol(item,treeview,position)
+
+            if _type == 'sparse_matrix':
+                self._context_sparse(item,treeview,position)
+
+            if _type == 'epoch':
+                self._context_epoch(item,treeview,position)
+
+            if _type == 'losses':
+                self._context_losses(item,treeview,position)
+
+        except:
             return
 
-        # no right click if no children
-        if not item._has_children:
-            return
+    def _context_mol(self,item,treeview,position):
 
         menu = QtWidgets.QMenu()
         actions = {}
@@ -345,28 +372,152 @@ class HDF5ItemModel(QtCore.QAbstractItemModel):
         action = menu.exec_(treeview.viewport().mapToGlobal(position))
         
         if action == actions['Load in VMD']:
-            cplx_name = item.name.split('/')[1]
-            mol_name =  item.name.split('/')[2]
-            grp_name = '/' + cplx_name + '/' + mol_name
-            molgrp = self.root_item.data_file[grp_name]
+            _,cplx_name,mol_name = item.name.split('/')
+            molgrp = self.root_item.data_file[item.name]
             viztools.create3Ddata(mol_name,molgrp)
             viztools.launchVMD(mol_name,self.res)
 
         if action == actions['Load in PyMol']:
-            cplx_name = item.name.split('/')[1]
-            mol_name =  item.name.split('/')[2]
-            grp_name = '/' + cplx_name + '/' + mol_name
-            molgrp = self.root_item.data_file[grp_name]
+            _,cplx_name,mol_name = item.name.split('/')
+            molgrp = self.root_item.data_file[item.name]
             viztools.create3Ddata(mol_name,molgrp)
             viztools.launchPyMol(mol_name)
 
         if action == actions['PDB2SQL']:
-            cplx_name = item.name.split('/')[1]
-            mol_name =  item.name.split('/')[2]
-            grp_name = '/' + cplx_name + '/' + mol_name
-            molgrp = self.root_item.data_file[grp_name]
+            _,cplx_name,mol_name = item.name.split('/')
+            molgrp = self.root_item.data_file[item.name]
             db = pdb2sql(molgrp['complex'].value)
-            treeview.emitDict.emit({'_'+item.basename+'_pb2sql': db})
+            treeview.emitDict.emit({'sql_' + item.basename: db})
+
+    def _context_sparse(self,item,treeview,position):
+
+        menu = QtWidgets.QMenu()
+        actions = {}
+        list_operations = ['Load Matrix','Plot Histogram']
+
+        for operation in list_operations:
+            actions[operation] = menu.addAction(operation)
+        action = menu.exec_(treeview.viewport().mapToGlobal(position))
+        name = item.basename + '_' + item.name.split('/')[2]
+
+        if action == actions['Load Matrix']:
+
+            subgrp = item.data_file[item.name]
+            data_dict = {}
+            if not subgrp.attrs['sparse']:
+                data_dict[item.name] =  subgrp['value'].value 
+            else:
+                molgrp = item.data_file[item.parent.parent.parent.name]
+                grid = {}
+                lx = len(molgrp['grid_points/x'].value)
+                ly = len(molgrp['grid_points/y'].value)
+                lz = len(molgrp['grid_points/z'].value)
+                shape = (lx,ly,lz)
+                spg = sparse.FLANgrid(sparse=True,index=subgrp['index'].value,value=subgrp['value'].value,shape=shape)
+                data_dict[name] =  spg.to_dense()
+            treeview.emitDict.emit(data_dict)
+
+        if action == actions['Plot Histogram']:
+
+            value = item.data_file[item.name]['value'].value
+            data_dict = {'value':value}
+            treeview.emitDict.emit(data_dict)
+
+            cmd = "%matplotlib inline\nimport matplotlib.pyplot as plt\nplt.hist(value,25)\nplt.show()\n"            
+            data_dict = {'exec_cmd':cmd} 
+            treeview.emitDict.emit(data_dict)
+
+    def _context_epoch(self,item,treeview,position):
+
+        menu = QtWidgets.QMenu()
+        actions = {}
+        list_operations = ['Scatter Plot']
+
+        for operation in list_operations:
+            actions[operation] = menu.addAction(operation)
+        action = menu.exec_(treeview.viewport().mapToGlobal(position))
+        
+        if action == actions['Scatter Plot']:
+
+            
+            values = []
+            train_out = item.data_file[item.name+'/train/outputs'].value
+            train_tar = item.data_file[item.name+'/train/targets'].value
+            values.append([x for x in train_out])
+            values.append([x for x in train_tar])
+            
+
+            valid_out = item.data_file[item.name+'/valid/outputs'].value
+            valid_tar = item.data_file[item.name+'/valid/targets'].value
+            values.append([x for x in valid_tar])
+            values.append([x for x in valid_out])
+
+
+            test_out = item.data_file[item.name+'/test/outputs'].value
+            test_tar = item.data_file[item.name+'/test/targets'].value
+            values.append([x for x in test_tar])
+            values.append([x for x in test_out])
+            
+            
+            vmin = np.array([x for a in values for x in a]).min()
+            vmax = np.array([x for a in values for x in a]).max()
+            delta = vmax-vmin
+            values.append([vmax + 0.1*delta])
+            values.append([vmin - 0.1*delta])
+
+            data_dict = {'_values':values}
+            treeview.emitDict.emit(data_dict)
+
+            data_dict = {}
+            cmd  = "%matplotlib inline\nimport matplotlib.pyplot as plt\n"    
+            cmd += "fig,ax = plt.subplots()\n"
+            cmd += "ax.scatter(_values[0],_values[1],c='red',label='train')\n"
+            cmd += "ax.scatter(_values[2],_values[3],c='blue',label='valid')\n"
+            cmd += "ax.scatter(_values[4],_values[5],c='green',label='test')\n"
+            cmd += "legen = ax.legend(loc='upper left')\n"
+            cmd += "ax.set_xlabel('Targets')\n"
+            cmd += "ax.set_ylabel('Predictions')\n"
+            cmd += "ax.plot([_values[-2],_values[-1]],[_values[-2],_values[-1]])\n"
+            cmd += "plt.show()\n" 
+            data_dict['exec_cmd'] = cmd
+            treeview.emitDict.emit(data_dict)
+
+    def _context_losses(self,item,treeview,position):
+
+        menu = QtWidgets.QMenu()
+        actions = {}
+        list_operations = ['Plot Losses']
+
+        for operation in list_operations:
+            actions[operation] = menu.addAction(operation)
+        action = menu.exec_(treeview.viewport().mapToGlobal(position))
+        
+        if action == actions['Plot Losses']:
+
+            
+            values = []
+            test = item.data_file[item.name+'/test'].value
+            train = item.data_file[item.name+'/train'].value
+            valid = item.data_file[item.name+'/valid'].value
+            values.append([x for x in train])
+            values.append([x for x in valid])
+            values.append([x for x in test])
+            
+            data_dict = {'_values':values}
+            treeview.emitDict.emit(data_dict)
+
+            data_dict = {}
+            cmd  = "%matplotlib inline\nimport matplotlib.pyplot as plt\n"    
+            cmd += "fig,ax = plt.subplots()\n"
+            cmd += "plt.plot(_values[0],c='red',label='train')\n"
+            cmd += "plt.plot(_values[1],c='blue',label='valid')\n"
+            cmd += "plt.plot(_values[2],c='green',label='test')\n"
+            cmd += "legen = ax.legend(loc='upper right')\n"
+            cmd += "ax.set_xlabel('Epoch')\n"
+            cmd += "ax.set_ylabel('Losses')\n"
+            cmd += "plt.show()\n" 
+            data_dict['exec_cmd'] = cmd
+            treeview.emitDict.emit(data_dict)
 
 class HDF5TreeWidget(QtWidgets.QTreeView):
 
@@ -402,32 +553,13 @@ class HDF5TreeWidget(QtWidgets.QTreeView):
 
         # get the current item
         items = [self.model._index_to_item(index) for index in self.selectedIndexes()]
-        if len(items)>1:
+        if len(items)!=1:
             return
         item=items[0]
-
-        # if we have a mapped feature
-        # we push the matrix
-        if item.parent.parent.basename == 'mapped_features':
-            subgrp = item.data_file[item.name]
-            data_dict = {}
-            name = item.name.replace('/','_')
-            if not subgrp.attrs['sparse']:
-                data_dict[item.name] =  subgrp['value'].value 
-            else:
-                molgrp = item.data_file[item.parent.parent.parent.name]
-                grid = {}
-                lx = len(molgrp['grid_points/x'].value)
-                ly = len(molgrp['grid_points/y'].value)
-                lz = len(molgrp['grid_points/z'].value)
-                shape = (lx,ly,lz)
-                spg = sparse.FLANgrid(sparse=True,index=subgrp['index'].value,value=subgrp['value'].value,shape=shape)
-                data_dict[name] =  spg.to_dense()
-            self.emitDict.emit(data_dict)
-
+        
         # if the item has no children we push the raw data
-        elif not item._has_children:
-            name = item.name.replace('/','_')
+        if not item._has_children:
+            name = item.basename + '_' + item.name.split('/')[2]
             self.emitDict.emit({name: item.data_file[item.name].value})
 
         # or we skip
