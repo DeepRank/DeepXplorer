@@ -1,6 +1,6 @@
 # DeepXplorer
 
-Data browser for the HDF5 files created by deeprank. The GUI allows to easily explore file structure, view, the target values and visualize the mapped features in either VMD or PyMol. In addition  the data can be loaded in an embedded iPython console for manipulation and analysis. 
+Data browser for the HDF5 files created by deeprank. The GUI allows to easily explore file structure, view, the target values and visualize the mapped features in either VMD or PyMol, plot the losses evolution during the training, make scatter plot of the ground truth VS predicion .... In addition  the data can be loaded in an embedded iPython console for manipulation and analysis. 
 
 ![alt-text](./deepxplorer.png)
 
@@ -30,4 +30,6 @@ To launch the tool using the example provided simply type in your console
 ```
 ./DeepXplorer -hdf5 example.hdf5
 ```
+
+## Tutorial
 

@@ -33,6 +33,7 @@ class QIPythonWidget(RichJupyterWidget):
     Convenience class for a live IPython console widget. 
     We can replace the standard banner using the customBanner argument
     https://stackoverflow.com/questions/11513132/embedding-ipython-qt-console-in-a-pyqt-application
+    
     possible colors lightbg,linux,nocolor
     """
 

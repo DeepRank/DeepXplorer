@@ -108,7 +108,7 @@ def launchVMD(mol_name,res):
 	f.write('# can be executed with vmd -e loadData.vmd\n\n')
 	
 	# write all the cube file in one given molecule
-	cube_files = list(filter(lambda x: '.cube' in x,os.listdir(export_path)))
+	cube_files = np.sort(list(filter(lambda x: '.cube' in x,os.listdir(export_path))))
 
 	write_molspec_vmd(f, cube_files[0],'VolumeSlice','Volume')
 	for idata in range(1,len(cube_files)):
