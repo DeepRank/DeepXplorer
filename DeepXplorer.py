@@ -22,18 +22,18 @@ from qtconsole.inprocess import QtInProcessKernelManager
 from IPython.lib import guisupport
 
 import numpy as np
-import viztools 
+import viztools
 
 from deeprank.tools import pdb2sql 
 from deeprank.tools import sparse
 
 class QIPythonWidget(RichJupyterWidget):
 
-    """ 
-    Convenience class for a live IPython console widget. 
+    """
+    Convenience class for a live IPython console widget.
     We can replace the standard banner using the customBanner argument
     https://stackoverflow.com/questions/11513132/embedding-ipython-qt-console-in-a-pyqt-application
-    
+
     possible colors lightbg,linux,nocolor
     """
 
@@ -584,7 +584,7 @@ class HDF5Browser(QtWidgets.QWidget):
 
         # the tree widget
         self.treeWidget = HDF5TreeWidget(data_file,res=self.res,parent=self)
-        self.selection_model = self.treeWidget.selectionModel() 
+        self.selection_model = self.treeWidget.selectionModel()
 
         # push button to load data
         self.load_tree_button = QtWidgets.QPushButton() #Create a refresh button
@@ -596,7 +596,7 @@ class HDF5Browser(QtWidgets.QWidget):
         self.treelayoutwidget = QtWidgets.QWidget()
         self.treelayoutwidget.setLayout(QtWidgets.QVBoxLayout())
         self.treelayoutwidget.layout().addWidget(self.treeWidget)
-        self.treelayoutwidget.layout().addWidget(self.load_tree_button)         
+        self.treelayoutwidget.layout().addWidget(self.load_tree_button)
 
         #the Ipython console
         self.ipyConsole = QIPythonWidget(customBanner="Welcome to the DeepRank Explorer\n")
