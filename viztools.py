@@ -97,7 +97,7 @@ def export_cube_files(data_dict,data_name,grid,export_path):
 						f.write("\n")
 			f.close()
 
-def launchVMD(mol_name,res):
+def launchVMD(mol_name):
 
 	export_path =  './_tmp_' + mol_name + '/'
 	exec_fname = 'loadData.vmd'
@@ -122,7 +122,6 @@ def launchVMD(mol_name,res):
 	f.close()
 
 	# launch VMD
-	w,h = res.width()/2,res.height()/2
 	sw,sh = 1050,600
 	w,h = 600,600
 	vmd_option = '-pos %f %f -size %f %f' %(sw,sh,w,h)
