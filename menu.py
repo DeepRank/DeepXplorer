@@ -2,6 +2,7 @@ import viztools
 from PyQt5 import QtWidgets
 from h5xplorer.menu_tools import *
 from deeprank.tools import pdb2sql, sparse
+from deeprank.learn import rankingMetrics
 import numpy as np
 
 def context_menu(self, treeview, position):
@@ -44,7 +45,7 @@ def context_menu(self, treeview, position):
         epoch_item = [item for item in all_item if self.root_item.data_file[item.name].attrs['type'] == 'epoch' ]
         haddock_item = [item for item in all_item if self.root_item.data_file[item.name].attrs['type'] == 'haddock' ]
 
-        _context_multiple_epoch(epoch_item,treeview,position,haddock_item)
+        _context_multiple_epoch_multilevel(epoch_item,treeview,position,haddock_item)
 
 
 def _context_mol(item,treeview,position,molgrp):
@@ -165,13 +166,13 @@ def _context_one_epoch(item,treeview,position,task):
         if action == actions['Hit Rate']:
 
             values = []
-            train_hit = item.data_file[item.name+'/train/hitrate'].value
-            valid_hit = item.data_file[item.name+'/valid/hitrate'].value
-            values.append(train_hit)
-            values.append(valid_hit)
+            train_hit = item.data_file[item.name+'/train/hit'].value
+            valid_hit = item.data_file[item.name+'/valid/hit'].value
+            values.append(rankingMetrics.hitrate(train_hit))
+            values.append(rankingMetrics.hitrate(valid_hit))
             if 'test' in item.data_file[item.name]:
-                test_hit = item.data_file[item.name+'/test/hitrate'].value
-                values.append(test_hit)
+                test_hit = item.data_file[item.name+'/test/hit'].value
+                values.append(rankingMetrics.hitrate(test_hit))
 
             data_dict = {'_values':values}
             treeview.emitDict.emit(data_dict)
@@ -197,13 +198,13 @@ def _context_one_epoch(item,treeview,position,task):
         if action == actions['Hit Rate']:
 
             values = []
-            train_hit = item.data_file[item.name+'/train/hitrate'].value
-            valid_hit = item.data_file[item.name+'/valid/hitrate'].value
-            values.append(train_hit)
-            values.append(valid_hit)
+            train_hit = item.data_file[item.name+'/train/hit'].value
+            valid_hit = item.data_file[item.name+'/valid/hit'].value
+            values.append(rankingMetrics.hitrate(train_hit))
+            values.append(rankingMetrics.hitrate(valid_hit))
             if 'test' in item.data_file[item.name]:
-                test_hit = item.data_file[item.name+'/test/hitrate'].value
-                values.append(test_hit)
+                test_hit = item.data_file[item.name+'/test/hit'].value
+                values.append(rankingMetrics.hitrate(test_hit))
 
             data_dict = {'_values':values}
             treeview.emitDict.emit(data_dict)
@@ -232,22 +233,23 @@ def _context_multiple_epoch(epoch_items,treeview,position,haddock_item=None):
     names = []
     if action == actions['Hit Rate (Train)']:
         for item in epoch_items:
-            hit = item.data_file[item.name+'/train/hitrate'].value
+            hit = item.data_file[item.name+'/train/hit'].value
             names.append(item.name.split('/')[-1])
-            values.append(hit)
+            values.append(rankingMetrics.hitrate(hit))
 
     if action == actions['Hit Rate (Valid)']:
         for item in epoch_items:
-            hit = item.data_file[item.name+'/valid/hitrate'].value
+            hit = item.data_file[item.name+'/valid/hit'].value
             names.append(item.name.split('/')[-1])
-            values.append(hit)
+            values.append(rankingMetrics.hitrate(hit))
 
     if action == actions['Hit Rate (Test)']:
         for item in epoch_items:
             if 'test' in item.data_file[item.name]:
-                hit = item.data_file[item.name+'/test/hitrate'].value
+                hit = item.data_file[item.name+'/test/hit'].value
                 names.append(item.name.split('/')[-1])
-                values.append(hit)
+                values.append(rankingMetrics.hitrate(hit))
+
     if haddock_item is not None:
         for item in haddock_item:
             hit = item.data_file[item.name+'/hitrate'].value
@@ -268,6 +270,40 @@ def _context_multiple_epoch(epoch_items,treeview,position,haddock_item=None):
     cmd += "plt.show()\n"
     data_dict['exec_cmd'] = cmd
     treeview.emitDict.emit(data_dict)
+
+def _context_multiple_epoch_multilevel(epoch_items,treeview,position,haddock_item=None):
+
+    func_operations = {'Hit Rate':rankingMetrics.hitrate, 'Av. Prec.': rankingMetrics.avprec }
+    list_operations = ['Hit Rate','Av. Prec.']
+    list_subop = [['Train','Valid','Test'],['Train','Valid','Test']]
+    action,actions = get_multilevel_actions(treeview,position,list_operations,list_subop)
+
+    for iop,op in enumerate(list_operations):
+        for subop in list_subop[iop]:
+            if action == actions[(op,subop)]:
+                plot_type,data_type = op,subop.lower()
+
+    names, values =[], []
+    for item in epoch_items:
+        hit = item.data_file[item.name+'/'+data_type+'/hit'].value
+        names.append(item.name.split('/')[-1])
+        values.append(func_operations[plot_type](hit))
+
+    data_dict = {'_values':values,'_names':names}
+    treeview.emitDict.emit(data_dict)
+
+    data_dict = {}
+    cmd  = "%matplotlib inline\nimport matplotlib.pyplot as plt\n"
+    cmd += "fig,ax = plt.subplots()\n"
+    cmd += "for v,n in zip(_values,_names):"
+    cmd += "    plt.plot(v,label=n)\n"
+    cmd += "legen = ax.legend(loc='lower right')\n"
+    cmd += "ax.set_xlabel('Top M')\n"
+    cmd += "ax.set_ylabel('%s')\n" %plot_type
+    cmd += "plt.show()\n"
+    data_dict['exec_cmd'] = cmd
+    treeview.emitDict.emit(data_dict)
+
 
 def _context_losses(item,treeview,position):
 
@@ -309,5 +345,3 @@ def _context_losses(item,treeview,position):
         cmd += "plt.show()\n"
         data_dict['exec_cmd'] = cmd
         treeview.emitDict.emit(data_dict)
-
-
