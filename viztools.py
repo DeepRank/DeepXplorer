@@ -25,11 +25,7 @@ def create3Ddata(mol_name,molgrp):
         sqldb.close()
 
     # get the grid
-    grid = {}
-    grid['x'] = molgrp['grid_points/x'].value
-    grid['y'] = molgrp['grid_points/y'].value
-    grid['z'] = molgrp['grid_points/z'].value
-    shape = (len(grid['x']),len(grid['y']),len(grid['z']))
+    grid = get_points(molgrp)
 
     # deals with the features
     if 'mapped_features' in molgrp:
@@ -42,6 +38,33 @@ def create3Ddata(mol_name,molgrp):
 
     # export the cube file
     export_cube_files(data_dict,grid,outdir)
+
+
+def get_points(mol_data):
+
+
+    try:
+
+        x = mol_data['grid_points/x'].value
+        y = mol_data['grid_points/y'].value
+        z = mol_data['grid_points/z'].value
+
+    except:
+
+        center = mol_data['grid_points/center'].value
+        npts = np.array([30,30,30])
+        res = np.array([1,1,1])
+
+        halfdim = 0.5*(npts*res)
+
+        low_lim = center-halfdim
+        hgh_lim = low_lim + res*(npts-1)
+
+        x = np.linspace(low_lim[0],hgh_lim[0],npts[0])
+        y = np.linspace(low_lim[1],hgh_lim[1],npts[1])
+        z = np.linspace(low_lim[2],hgh_lim[2],npts[2])
+
+    return {'x':x,'y':y,'z':z}
 
 
 def get_feature(molgrp):
@@ -68,7 +91,7 @@ def get_feature(molgrp):
 def map_feature(molgrp):
 
 
-    ds = DataSet(None,process=False)
+    ds = DataSet(None,grid_info={'number_of_points':(30,30,30),'resolution':(1,1,1)},process=False)
 
     feature_list = {}
     feature_list['AtomicDensities'] = {'CA':3.5, 'C':3.5, 'N':3.5, 'O':3.5}
