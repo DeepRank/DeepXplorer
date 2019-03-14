@@ -69,6 +69,11 @@ def get_points(mol_data):
 
 def get_feature(molgrp):
 
+    nx = len(molgrp['grid_points/x'])
+    ny = len(molgrp['grid_points/y'])
+    nz = len(molgrp['grid_points/z'])
+    shape = (nx,ny,nz)
+
     mapgrp = molgrp['mapped_features']
     data_dict = {}
 
