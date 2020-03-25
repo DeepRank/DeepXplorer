@@ -10,10 +10,12 @@ from pdb2sql import pdb2sql
 from deeprank.tools import sparse
 from deeprank.learn import DataSet
 
-def create3Ddata(mol_name, molgrp):
-    print(mol_name, molgrp)
-    outdir = './_tmp_h5x/' + mol_name + '/'
+def create3Ddata(mol_name, molgrp, root='./_tmp_h5x/'):
+    
+    if not os.path.isdir(root):
+        os.mkdir(root)
 
+    outdir = root + mol_name + '/'
     if not os.path.isdir(outdir):
         os.mkdir(outdir)
     
@@ -174,9 +176,9 @@ def export_cube_files(data_dict,grid,export_path):
                         f.write("\n")
             f.close()
 
-def launchVMD(mol_name):
+def launchVMD(mol_name, root='./_tmp_h5x/'):
 
-    export_path =  './_tmp_h5x/' + mol_name + '/'
+    export_path =  root + mol_name + '/'
     exec_fname = 'loadData.vmd'
 
     # export VMD script if cube format is required
@@ -218,10 +220,10 @@ def write_molspec_vmd(f,name,rep,color):
 
 
 
-def launchPyMol(mol_name):
+def launchPyMol(mol_name, root='./_tmp_h5x/'):
 
 
-    export_path =  './_tmp_h5x/' + mol_name + '/'
+    export_path =  root + mol_name + '/'
     exec_fname = 'loadData.py'
 
     fname = export_path + exec_fname
