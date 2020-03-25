@@ -10,21 +10,19 @@ from pdb2sql import pdb2sql
 from deeprank.tools import sparse
 from deeprank.learn import DataSet
 
-def create3Ddata(mol_name,molgrp):
-
-
+def create3Ddata(mol_name, molgrp):
+    print(mol_name, molgrp)
     outdir = './_tmp_h5x/' + mol_name + '/'
 
     if not os.path.isdir(outdir):
-        print('mkdir ', outdir)
         os.mkdir(outdir)
-
+    
     # create the pdb file
     pdb_name = outdir + 'complex.pdb'
     if not os.path.isfile(pdb_name):
         sqldb = pdb2sql(molgrp['complex'].value)
         sqldb.exportpdb(pdb_name)
-        sqldb.close()
+        sqldb._close()
 
     # get the grid
     grid = get_points(molgrp)

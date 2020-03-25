@@ -59,18 +59,18 @@ def _context_mol(item,treeview,position,molgrp):
         actions[operation] = menu.addAction(operation)
     action = menu.exec_(treeview.viewport().mapToGlobal(position))
 
+    _,cplx_name, mol_name = item.name.split('/')
+    mol_name = mol_name.replace('-','_')
+
     if action == actions['Load in VMD']:
-        _,cplx_name,mol_name = item.name.split('/')
-        viztools.create3Ddata(mol_name,molgrp)
+        viztools.create3Ddata(mol_name, molgrp)
         viztools.launchVMD(mol_name)
 
     if action == actions['Load in PyMol']:
-        _,cplx_name,mol_name = item.name.split('/')
         viztools.create3Ddata(mol_name,molgrp)
         viztools.launchPyMol(mol_name)
 
     if action == actions['PDB2SQL']:
-        _,cplx_name,mol_name = item.name.split('/')
         db = pdb2sql(molgrp['complex'].value)
         treeview.emitDict.emit({'sql_' + item.basename: db})
 
