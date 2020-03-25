@@ -1,7 +1,8 @@
 import viztools
 from PyQt5 import QtWidgets
 from h5xplorer.menu_tools import *
-from deeprank.tools import pdb2sql, sparse
+from deeprank.tools import sparse
+from pdb2sql import pdb2sql
 from deeprank.learn import rankingMetrics
 import numpy as np
 

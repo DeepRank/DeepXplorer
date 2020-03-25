@@ -6,15 +6,17 @@ import subprocess as sp
 import os
 import pickle
 import h5py
-from deeprank.tools import pdb2sql
+from pdb2sql import pdb2sql
 from deeprank.tools import sparse
 from deeprank.learn import DataSet
 
 def create3Ddata(mol_name,molgrp):
 
+
     outdir = './_tmp_h5x/' + mol_name + '/'
 
     if not os.path.isdir(outdir):
+        print('mkdir ', outdir)
         os.mkdir(outdir)
 
     # create the pdb file
